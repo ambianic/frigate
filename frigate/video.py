@@ -51,15 +51,21 @@ def get_frame_shape(rtsp_url):
     # size can be allocated in memory
     video = cv2.VideoCapture(rtsp_url)
     print("Reading video stream from URL: " + str(rtsp_url))
-    ret, frame = video.read()
-    print("OpenCV Video Read Ready: " + str(ret))
+    is_video_ready = False
+    while not is_video_ready:
+        is_video_ready, frame = video.read()
+        if not is_video_ready:
+            print("OpenCV Video not ready. Check URL and credentials. Will retry in a moment.")
+            time.sleep(1)
     frame_shape = frame.shape
     video.release()
     return frame_shape
 
 def get_rtsp_url(rtsp_config):
     if (rtsp_config['password'].startswith('$')):
+        # print("Fetching pass from env var {}".format(rtsp_config['password'][1:]))
         rtsp_config['password'] = os.getenv(rtsp_config['password'][1:])
+        # print("RTSP_PASSWORD: {}".format(rtsp_config['password']))
     return 'rtsp://{}:{}@{}:{}{}'.format(rtsp_config['user'], 
         rtsp_config['password'], rtsp_config['host'], rtsp_config['port'],
         rtsp_config['path'])

@@ -68,6 +68,11 @@ def main():
     # create a flask app that encodes frames a mjpeg on demand
     app = Flask(__name__)
 
+    @app.route('/')
+    def ishealthy():
+        # return a healh
+        return "Frigate is running. Alive and healthy!"
+
     @app.route('/<camera_name>/best_person.jpg')
     def best_person(camera_name):
         best_person_frame = cameras[camera_name].get_best_person()

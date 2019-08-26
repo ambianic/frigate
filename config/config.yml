@@ -1,20 +1,21 @@
 web_port: 5000
 
+
 mqtt:
-  host: mqtt.server.com
+  host: hass.lan
   topic_prefix: frigate
 #  user: username # Optional -- Uncomment for use
 #  password: password # Optional -- Uncomment for use
 
 cameras:
-  back:
+  front_door:
     rtsp:
-      user: viewer
-      host: 10.0.10.10
+      user: admin
+      host: 192.168.86.131
       port: 554
       # values that begin with a "$" will be replaced with environment variable
       password: $RTSP_PASSWORD
-      path: /cam/realmonitor?channel=1&subtype=2
+      path: /ISAPI/Streaming/channels/101/picture
 
     ################
     ## Optional mask. Must be the same dimensions as your video feed.
@@ -40,26 +41,115 @@ cameras:
     # supports QuickSync.
     ################
     # ffmpeg_hwaccel_args:
-    #   - -hwaccel
+    #   - -hwaccel auto
     #   - vaapi
     #   - -hwaccel_device
     #   - /dev/dri/renderD128
     #   - -hwaccel_output_format
     #   - yuv420p
+
+    ################
+    # Optional ffmpeg input parameters. Change these only if you are experimenting with ffmpeg parameter optimization.
+    # Changing these parameters will override the default settings and may corrupt the video capture flow.
+    ################
+    ffmpeg_input_args: 
+      - -avoid_negative_ts 
+      - make_zero
+      - -fflags 
+      - nobuffer
+      - -flags 
+      - low_delay
+      - -strict 
+      - experimental
+      - -fflags 
+      - +genpts 
+      - -rtsp_transport 
+      - tcp
+      - -stimeout 
+      - 5000000
+      - -use_wallclock_as_timestamps 
+      - 1
+      - -skip_frame 
+      - nokey
+#      - -vsync 
+#      - 0
+#      - -r 
+#      - 6 
+
+    ################
+    # Optional ffmpeg output parameters. Change these only if you are experimenting with ffmpeg parameter optimization.
+    # Changing these parameters will override the default settings and may corrupt the video capture flow.
+    ################
+    ffmpeg_output_args:
+      - -f
+      - rawvideo
+      - -pix_fmt
+      - rgb24
+      - -vsync 
+      - 0
+
+    ################
+    # Optional ffmpeg log level. Helpful when debugging issues related to ffmpeg.
+    ################
+    ffmpeg_log_level: info
     
+
+    ################
+    # Regions specify where to look for detections in the camera images.
+    # size is the size of a the region square.
+    # x_offset and y_offset are regiona start corner relative to the 0,0 coordinates of the camera image.
+    # min_person_area sets the minimum area size (width*height) for a detection to be interesting.
+    # threshold sets the minimum confidence of the AI that the detected object is of the suggested category (label).
+    # save_samples is an optional parameter that enable saving of regions with detected objects to local files.
+    # The name format of saved files is :
+    #  /data/<camera_name>/detections/timestamp.jpg for the input image (region of the camera image)
+    #  /data/<camera_name>/detections/timestamp.json for the detections parameters
+    # detections will be spaced at detections_interval seconds or longer to avoid near duplicate images.
+    # Default is 2 seconds.
+    # non_detections_interval indicates how often to save images where nothing was detected.
+    # These can be used later for offline analysis and AI model training.
+    # Default non_detections_interval is 300 seconds (5 minutes).
+    ################
     regions:
-      - size: 350
-        x_offset: 0
-        y_offset: 300
-        min_person_area: 5000
-        threshold: 0.5
-      - size: 400
-        x_offset: 350
-        y_offset: 250
-        min_person_area: 2000
-        threshold: 0.5
-      - size: 400
-        x_offset: 750
-        y_offset: 250
-        min_person_area: 2000
-        threshold: 0.5
+      - size: 700
+        x_offset: 250
+        y_offset: 10
+        min_person_area: 1000
+        threshold: 0.6
+        save_samples:
+          detections_interval: 1
+          non_detections_interval: 1800
+
+
+#      - size: 350
+#        x_offset: 0
+#        y_offset: 300
+#        min_person_area: 5000
+#        threshold: 0.5
+#      - size: 400
+#        x_offset: 350
+#        y_offset: 250
+#        min_person_area: 2000
+#        threshold: 0.5
+#      - size: 400
+#        x_offset: 750
+#        y_offset: 250
+#        min_person_area: 2000
+#        threshold: 0.5
+
+
+################
+# Optional Tensorflow settings. Change these only if you are familiar with Tensorflow.
+# Intended for developer experimentation.
+################
+tensorflow:
+  # object detection model and label paths
+  # model: /config/mobilenet_ssd_v2_coco_quant_postprocess_edgetpu.tflite
+  # labels: /config/coco_labels.txt
+  # face detection model without labels
+  model: /config/mobilenet_ssd_v2_face_quant_postprocess_edgetpu.tflite
+  labels: /config/coco_labels.txt
+  # Directory where output data will be persisted as needed. Default is /data/
+  # For example images with detected object boxes can be saved in this directory. See also regions: section.
+  # data_dir: /data/
+
